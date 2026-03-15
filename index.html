@@ -3,369 +3,371 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RetroVault | Industrial NES</title>
+    <title>RetroVault | NES Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
         
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0c0c0e;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #050507;
             color: #f4f4f5;
             overflow: hidden;
+            overscroll-behavior-y: contain;
         }
 
-        /* Industrial NES Cartridge - Square & Sharp */
+        /* NES Cartridge Style */
         .cartridge {
-            background: #3a3a3e;
-            aspect-ratio: 4/5;
+            background: #4a4a4e; /* Classic Grey */
+            border-radius: 8px 8px 24px 24px;
             position: relative;
-            box-shadow: 4px 4px 0px #000;
-            padding: 8% 8% 22% 8%;
-            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: inset -4px -4px 0px rgba(0,0,0,0.3), 
+                        inset 4px 4px 0px rgba(255,255,255,0.1),
+                        0 15px 30px rgba(0,0,0,0.5);
+            padding: 12% 10% 25% 10%;
+            transition: all 0.3s ease;
         }
 
+        /* Cartridge Ridges */
+        .cartridge::before {
+            content: '';
+            position: absolute;
+            top: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 15%;
+            background: linear-gradient(to right, 
+                rgba(0,0,0,0.2) 2px, transparent 2px);
+            background-size: 8px 100%;
+            border-top: 2px solid rgba(0,0,0,0.2);
+        }
+
+        /* Cartridge Label Space */
         .cartridge-label {
-            background: #111;
+            background: #fff;
             width: 100%;
             height: 100%;
-            border: 2px solid #1a1a1a;
-            position: relative;
+            border-radius: 4px;
             overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .cartridge-ridges {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 12%;
-            background: repeating-linear-gradient(90deg, #2a2a2e, #2a2a2e 4px, #3a3a3e 4px, #3a3a3e 8px);
-            border-top: 2px solid #222;
+            border: 3px solid #1a1a1a;
+            position: relative;
         }
 
         .game-card:hover .cartridge {
-            transform: translate(-4px, -4px);
-            box-shadow: 8px 8px 0px #ef4444;
+            transform: translateY(-10px) rotateX(10deg);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.6), 0 0 20px rgba(99, 102, 241, 0.3);
         }
 
-        /* Hide Scrollbar but keep functionality */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; }
-
-        .modal-blur {
-            backdrop-filter: blur(12px);
-            background: rgba(0,0,0,0.85);
-        }
-
-        #fileInput, #iconFolderInput { display: none; }
-
-        /* Scanning Animation */
-        .scan-line {
-            width: 100%;
-            height: 2px;
-            background: #ef4444;
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 20px; }
+        
+        .glow {
             position: absolute;
-            top: 0;
-            left: 0;
-            animation: scan 2s linear infinite;
-            z-index: 10;
-            opacity: 0.5;
+            border-radius: 50%;
+            filter: blur(100px);
+            z-index: -1;
+            opacity: 0.1;
         }
 
-        @keyframes scan {
-            0% { top: 0%; }
-            100% { top: 100%; }
+        .btn-active:active { transform: scale(0.95); }
+        #fileInput, #iconFolderInput { display: none; }
+        
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+        .scanline {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.05), transparent);
+            animation: scanline 8s linear infinite;
+            pointer-events: none;
         }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col lg:flex-row">
 
-    <!-- System File Inputs -->
-    <input type="file" id="fileInput" webkitdirectory directory multiple onchange="handleFolderSelection(event, 'rom')">
-    <input type="file" id="iconFolderInput" webkitdirectory directory multiple onchange="handleFolderSelection(event, 'icon')">
+    <!-- Hidden Folder Inputs -->
+    <input type="file" id="fileInput" webkitdirectory directory multiple onchange="handleFileSelection(event)">
+    <input type="file" id="iconFolderInput" webkitdirectory directory multiple onchange="handleIconFolderSelection(event)">
 
-    <!-- Sidebar: Restored -->
-    <aside class="hidden lg:flex w-72 h-full bg-[#08080a] border-r border-white/5 flex-col z-50">
-        <div class="p-8">
-            <h1 class="text-2xl font-black tracking-tighter text-red-600 leading-none">RETROVAULT</h1>
-            <p class="text-[9px] uppercase tracking-[0.3em] text-zinc-600 font-bold mt-2">Industrial Logic v2.0</p>
+    <div class="glow w-[600px] h-[600px] bg-indigo-600 top-[-200px] right-[-100px]"></div>
+    <div class="glow w-[500px] h-[500px] bg-red-600 bottom-[-200px] left-[-100px]"></div>
+
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" class="hidden lg:flex w-72 h-full bg-[#0a0a0e] border-r border-white/5 flex flex-col z-50">
+        <div class="p-8 flex items-center gap-4">
+            <div class="w-12 h-12 bg-red-600 rounded-2xl flex items-center justify-center shadow-lg shadow-red-600/30 flex-shrink-0">
+                <i class="fas fa-gamepad text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-black tracking-tighter leading-none">RETROVAULT</h1>
+                <p class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">8-Bit Engine</p>
+            </div>
         </div>
 
-        <nav class="flex-1 px-4 space-y-1 mt-4">
-            <button class="w-full flex items-center gap-4 px-6 py-4 bg-white/5 text-white rounded font-black text-[10px] tracking-widest uppercase">
-                <i class="fas fa-th-large text-red-500"></i> Vault Library
-            </button>
-            <button class="w-full flex items-center gap-4 px-6 py-4 text-zinc-500 hover:text-white transition-all font-black text-[10px] tracking-widest uppercase">
-                <i class="fas fa-clock"></i> Recent Logs
-            </button>
-            <button class="w-full flex items-center gap-4 px-6 py-4 text-zinc-500 hover:text-white transition-all font-black text-[10px] tracking-widest uppercase">
-                <i class="fas fa-star"></i> Favorites
-            </button>
+        <nav class="flex-1 px-4 space-y-2 mt-6">
+            <a href="#" class="flex items-center gap-4 px-5 py-4 bg-white/5 border border-white/5 rounded-2xl text-white font-bold transition-all">
+                <i class="fas fa-th-large text-lg text-red-500"></i>
+                <span class="text-sm">My Collection</span>
+            </a>
         </nav>
 
         <div class="p-6 border-t border-white/5">
-            <button onclick="toggleSettings(true)" class="w-full flex items-center gap-4 px-6 py-4 text-zinc-500 hover:text-white transition-all font-black text-[10px] tracking-widest uppercase">
-                <i class="fas fa-cog"></i> System Setup
+            <button onclick="toggleSettings(true)" class="w-full flex items-center gap-4 px-5 py-4 text-zinc-500 hover:text-white hover:bg-white/5 rounded-2xl transition-all">
+                <i class="fas fa-cog text-lg"></i>
+                <span class="text-sm font-bold">System Setup</span>
             </button>
         </div>
     </aside>
 
-    <!-- Main Content Area -->
-    <div class="flex-1 flex flex-col relative overflow-hidden">
-        
-        <!-- Header: Restored Search & Action -->
-        <header class="h-20 lg:h-24 flex items-center justify-between px-8 lg:px-12 border-b border-white/5 bg-[#0c0c0e]/80 backdrop-blur-md z-40">
-            <div class="flex-1 max-w-xl relative group">
-                <i class="fas fa-search absolute left-0 top-1/2 -translate-y-1/2 text-zinc-700 group-focus-within:text-red-500 transition-colors"></i>
-                <input type="text" id="searchInput" onkeyup="filterGames()" placeholder="SEARCH SYSTEM ARCHIVES..." 
-                       class="w-full bg-transparent py-4 pl-8 text-[10px] font-black tracking-[0.2em] uppercase focus:outline-none placeholder:text-zinc-800">
+    <div class="flex-1 flex flex-col overflow-hidden relative">
+        <header class="h-20 lg:h-24 flex items-center justify-between px-6 lg:px-12 z-40">
+            <button onclick="toggleSettings(true)" class="lg:hidden w-10 h-10 flex items-center justify-center bg-white/5 rounded-xl border border-white/10">
+                <i class="fas fa-cog text-zinc-400"></i>
+            </button>
+
+            <div class="relative flex-1 max-w-xl group mx-4 lg:mx-0">
+                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600"></i>
+                <input type="text" id="searchInput" onkeyup="filterGames()" placeholder="Search library..." 
+                       class="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-6 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 transition-all outline-none">
             </div>
 
-            <div class="flex items-center gap-6">
-                <button onclick="toggleImport(true)" class="bg-red-600 hover:bg-red-500 text-white text-[10px] font-black px-8 py-4 tracking-[0.2em] transition-all shadow-lg shadow-red-900/20">
-                    <i class="fas fa-plus mr-2"></i> ADD MEDIA
+            <div class="hidden lg:flex items-center gap-6 ml-8">
+                <button onclick="toggleImport(true)" class="px-8 py-3.5 bg-red-600 text-white rounded-2xl font-black text-sm hover:bg-red-500 transition-all shadow-xl shadow-red-600/20">
+                    <i class="fas fa-plus mr-2"></i> NEW CARTRIDGE
                 </button>
             </div>
         </header>
 
-        <!-- Library Grid -->
-        <main class="flex-1 overflow-y-auto p-8 lg:p-12 custom-scrollbar">
-            <div class="flex items-end justify-between mb-12">
-                <div>
-                    <h2 class="text-3xl font-black tracking-tighter uppercase">Media Index</h2>
-                    <p id="gameCounter" class="text-zinc-600 text-[9px] font-black tracking-widest mt-1">SYSTEM READY</p>
-                </div>
+        <main class="flex-1 overflow-y-auto px-6 lg:px-12 pb-24 lg:pb-12 custom-scrollbar">
+            <div class="mt-2 lg:mt-6 mb-10">
+                <h2 class="text-3xl lg:text-4xl font-black tracking-tight">Vault Collection</h2>
+                <p class="text-zinc-500 text-xs font-medium mt-1" id="gameCounter">Ready for playback</p>
             </div>
 
-            <div id="gameGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-8 lg:gap-10"></div>
-            
-            <div id="emptyState" class="hidden h-96 flex flex-col items-center justify-center text-center opacity-30">
-                <i class="fas fa-folder-open text-4xl mb-4"></i>
-                <p class="text-[10px] font-black tracking-[0.4em]">NO CARTRIDGES DETECTED</p>
-                <p class="text-[9px] mt-2">Map ROM directory in System Setup</p>
+            <div id="gameGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 lg:gap-10"></div>
+
+            <div id="emptyState" class="hidden flex flex-col items-center justify-center py-20 lg:py-40 text-center">
+                <div class="w-20 h-20 bg-zinc-900 rounded-3xl flex items-center justify-center mb-6 border border-white/10 shadow-2xl">
+                    <i class="fas fa-compact-disc text-3xl text-zinc-700"></i>
+                </div>
+                <h3 class="text-xl font-black">No Media Found</h3>
+                <p class="text-zinc-500 text-sm mt-2 max-w-xs">Map your ROM folder in System Setup to populate the vault.</p>
             </div>
         </main>
 
-        <!-- Mobile Nav Bar (Restored) -->
-        <div class="lg:hidden h-20 bg-[#08080a] border-t border-white/5 flex items-center justify-around px-6">
-            <button class="text-red-600"><i class="fas fa-th-large text-xl"></i></button>
-            <button onclick="toggleImport(true)" class="bg-red-600 w-12 h-12 rounded-full -mt-10 border-4 border-[#0c0c0e] shadow-xl"><i class="fas fa-plus"></i></button>
-            <button onclick="toggleSettings(true)" class="text-zinc-500"><i class="fas fa-cog text-xl"></i></button>
+        <!-- Mobile Nav -->
+        <div class="lg:hidden fixed bottom-0 left-0 right-0 h-20 bg-[#0a0a0e]/95 backdrop-blur-xl border-t border-white/5 px-6 flex items-center justify-between z-[60] safe-bottom">
+            <button class="flex flex-col items-center gap-1 text-red-500">
+                <i class="fas fa-th-large text-xl"></i>
+                <span class="text-[10px] font-bold">Vault</span>
+            </button>
+            <button onclick="toggleImport(true)" class="w-14 h-14 bg-red-600 text-white rounded-full flex items-center justify-center -mt-10 shadow-2xl shadow-red-600/30 border-4 border-[#050507]">
+                <i class="fas fa-plus text-lg"></i>
+            </button>
+            <button onclick="toggleSettings(true)" class="flex flex-col items-center gap-1 text-zinc-500">
+                <i class="fas fa-cog text-xl"></i>
+                <span class="text-[10px] font-bold">Setup</span>
+            </button>
         </div>
     </div>
 
-    <!-- App Selector Modal (Dynamic Host Selection) -->
-    <div id="appSelectorModal" class="hidden fixed inset-0 z-[200] modal-blur flex items-center justify-center p-6">
-        <div class="bg-[#121214] border border-white/10 p-10 w-full max-w-sm shadow-2xl">
-            <h3 class="text-[10px] font-black text-red-500 mb-8 tracking-[0.3em] uppercase">Select Host Host</h3>
-            <div class="space-y-2 mb-10" id="appOptions"></div>
-            <button onclick="closeAppSelector()" class="w-full text-[10px] font-black text-zinc-600 hover:text-white tracking-widest uppercase transition-all">Cancel Boot</button>
-        </div>
-    </div>
-
-    <!-- Settings Panel (Restored) -->
-    <div id="settingsModal" class="hidden fixed inset-0 z-[150] modal-blur flex items-center justify-center p-6">
-        <div class="bg-[#0c0c0e] border border-white/10 p-8 lg:p-12 w-full max-w-2xl relative shadow-2xl">
-            <button onclick="toggleSettings(false)" class="absolute top-8 right-8 text-zinc-600 hover:text-white"><i class="fas fa-times"></i></button>
+    <!-- Import Modal -->
+    <div id="importModal" class="hidden fixed inset-0 z-[100] flex items-end lg:items-center lg:justify-end">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-md" onclick="toggleImport(false)"></div>
+        <div class="relative w-full lg:max-w-xl h-[90vh] lg:h-full bg-[#121217] lg:border-l border-white/10 shadow-2xl flex flex-col modal-animate-up lg:modal-animate-right rounded-t-[32px] lg:rounded-none">
             
-            <h2 class="text-2xl font-black mb-10 tracking-tighter">SYSTEM SETUP</h2>
-            
-            <div class="grid lg:grid-cols-2 gap-8">
-                <div class="space-y-6">
-                    <div>
-                        <label class="text-[9px] font-black text-zinc-500 block mb-3 uppercase tracking-widest">ROM Root Path</label>
-                        <button onclick="triggerFolderPicker('rom')" class="w-full py-4 bg-white/5 border border-white/10 text-[10px] font-bold text-left px-6 hover:bg-white/10 transition-all truncate" id="romPathText">
-                            SELECT DIRECTORY
-                        </button>
-                    </div>
-                    <div>
-                        <label class="text-[9px] font-black text-zinc-500 block mb-3 uppercase tracking-widest">Art / Icon Path</label>
-                        <button onclick="triggerFolderPicker('icon')" class="w-full py-4 bg-white/5 border border-white/10 text-[10px] font-bold text-left px-6 hover:bg-white/10 transition-all truncate" id="iconPathText">
-                            SELECT DIRECTORY
-                        </button>
-                    </div>
-                </div>
-                <div class="bg-white/5 p-6 border border-white/10 flex flex-col justify-center">
-                    <p class="text-[9px] font-black text-red-500 uppercase tracking-widest mb-2">Notice</p>
-                    <p class="text-[10px] text-zinc-500 leading-relaxed font-bold italic">Mapping directories allows the engine to scan for metadata. No local files are modified or moved.</p>
-                </div>
-            </div>
-
-            <button onclick="toggleSettings(false)" class="mt-12 w-full bg-white text-black py-5 text-[10px] font-black tracking-[0.4em] hover:bg-red-500 hover:text-white transition-all">SAVE ARCHIVE CONFIG</button>
-        </div>
-    </div>
-
-    <!-- Import Modal: Restored Functional Scanning -->
-    <div id="importModal" class="hidden fixed inset-0 z-[100] modal-blur flex items-center justify-end">
-        <div class="bg-[#0c0c0e] w-full max-w-xl h-full border-l border-white/10 p-10 flex flex-col shadow-2xl">
-            <div class="flex items-center justify-between mb-12">
+            <div class="p-6 lg:p-10 border-b border-white/5 flex items-center justify-between">
                 <div>
-                    <h2 class="text-xl font-black tracking-[0.3em]">IMPORT MEDIA</h2>
-                    <p class="text-[9px] text-zinc-500 font-bold mt-1 italic">Scan results from mapped directories</p>
+                    <h2 class="text-xl lg:text-3xl font-black uppercase">Import Media</h2>
+                    <p class="text-[10px] font-bold text-red-500 tracking-widest mt-1">New Cartridge Production</p>
                 </div>
-                <button onclick="toggleImport(false)" class="p-2 text-zinc-500 hover:text-white"><i class="fas fa-times"></i></button>
+                <button onclick="toggleImport(false)" class="p-2 hover:bg-white/5 rounded-full"><i class="fas fa-times"></i></button>
             </div>
-            
-            <div class="flex-1 overflow-y-auto space-y-10 custom-scrollbar pr-4">
+
+            <div class="p-6 lg:p-10 flex-1 overflow-y-auto space-y-8 custom-scrollbar">
                 <div class="space-y-4">
-                    <label class="text-[9px] font-black text-red-500 uppercase tracking-widest">1. Scanned ROMs</label>
-                    <div id="importRomList" class="grid gap-2">
-                        <div class="p-6 border-2 border-dashed border-white/5 text-center text-zinc-700 text-[10px] font-black uppercase">Scan folder to begin</div>
-                    </div>
-                </div>
-                
-                <div class="space-y-4">
-                    <label class="text-[9px] font-black text-red-500 uppercase tracking-widest">2. Select Label Art</label>
-                    <div class="grid grid-cols-4 gap-3" id="importIconGrid">
-                        <!-- Icons populated -->
+                    <label class="text-[10px] font-black uppercase text-zinc-500 tracking-widest">1. Select ROM File</label>
+                    <div class="grid gap-2" id="romList">
+                        <button onclick="triggerFilePicker()" class="p-6 border-2 border-dashed border-white/10 rounded-2xl text-zinc-500 text-xs font-bold hover:border-red-500 transition-colors">
+                            Scan ROM Folder
+                        </button>
                     </div>
                 </div>
 
-                <div class="pt-8 border-t border-white/10 space-y-6">
-                    <div>
-                        <label class="text-[9px] font-black text-zinc-500 uppercase mb-3 block">3. Define Title</label>
-                        <input type="text" id="importName" placeholder="ENTER GAME NAME..." class="w-full bg-white/5 border border-white/10 p-5 text-xs font-black tracking-widest outline-none focus:border-red-500">
+                <div class="space-y-4">
+                    <label class="text-[10px] font-black uppercase text-zinc-500 tracking-widest">2. Label Art (NES Cartridge)</label>
+                    <div class="grid grid-cols-3 gap-4" id="iconList">
+                        <!-- Icons shown inside cartridge frames -->
                     </div>
-                    <button onclick="finalizeImport()" class="w-full bg-red-600 py-5 text-[10px] font-black tracking-[0.4em] hover:bg-red-500 transition-all">COMMIT TO VAULT</button>
+                </div>
+
+                <div class="space-y-6 pb-10">
+                    <div class="space-y-4">
+                        <label class="text-[10px] font-black uppercase text-zinc-500 tracking-widest">3. Metadata</label>
+                        <input type="text" id="gameName" placeholder="Game Title" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:ring-2 focus:ring-red-500">
+                        <select id="targetApp" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none">
+                            <option>RetroArch</option>
+                            <option>FCEUX</option>
+                            <option>Nestopia</option>
+                            <option>Mesen</option>
+                        </select>
+                    </div>
+                    <button onclick="saveGame()" class="w-full py-5 bg-white text-black font-black rounded-2xl shadow-2xl btn-active">
+                        CREATE CARTRIDGE
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Toast/Notification System -->
-    <div id="toast" class="hidden fixed bottom-12 right-12 z-[300] bg-white text-black p-6 border-l-4 border-red-600 shadow-2xl">
-        <div class="flex items-center gap-4">
-            <div class="w-2 h-2 bg-red-600 animate-ping"></div>
-            <p id="toastMsg" class="text-[10px] font-black tracking-widest uppercase"></p>
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-xl" onclick="toggleSettings(false)"></div>
+        <div class="relative w-full max-w-2xl bg-[#121217] border border-white/10 rounded-[32px] shadow-2xl overflow-hidden overflow-y-auto max-h-[90vh]">
+            <div class="p-8 lg:p-12">
+                <h2 class="text-3xl font-black mb-8">System Setup</h2>
+                
+                <div class="space-y-8">
+                    <div>
+                        <label class="text-[10px] font-black uppercase text-red-500 mb-4 block">Primary ROM Folder</label>
+                        <button onclick="triggerFilePicker()" class="w-full py-5 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center gap-3 hover:bg-white/10 transition-all">
+                            <i class="fas fa-folder"></i> <span id="romPathLabel">SELECT FOLDER</span>
+                        </button>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] font-black uppercase text-red-500 mb-4 block">Icon / Artwork Folder</label>
+                        <button onclick="triggerIconFolderPicker()" class="w-full py-5 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center gap-3 hover:bg-white/10 transition-all">
+                            <i class="fas fa-images"></i> <span id="iconPathLabel">SELECT FOLDER</span>
+                        </button>
+                    </div>
+                </div>
+
+                <button onclick="toggleSettings(false)" class="w-full mt-12 py-5 bg-red-600 text-white rounded-2xl font-black shadow-xl shadow-red-600/20">
+                    RETURN TO VAULT
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="hidden fixed bottom-12 left-1/2 -translate-x-1/2 lg:left-auto lg:right-12 lg:translate-x-0 z-[200] w-[calc(100%-48px)] lg:w-96">
+        <div class="bg-red-600 text-white rounded-2xl p-5 shadow-2xl flex items-center gap-4">
+            <i class="fas fa-bolt"></i>
+            <p id="toastMsg" class="font-bold text-sm">System Message</p>
         </div>
     </div>
 
     <script>
-        // State Management
-        let library = JSON.parse(localStorage.getItem('rv-vault')) || [];
-        let currentScan = { roms: [], icons: [] };
-        let staging = { rom: null, icon: null };
-        let activeLaunchId = null;
+        let library = JSON.parse(localStorage.getItem('rv-library')) || [];
+        let scannedFiles = [];
+        let scannedIcons = [
+            'https://img.icons8.com/color/144/super-mario.png',
+            'https://img.icons8.com/color/144/legend-of-zelda.png',
+            'https://img.icons8.com/color/144/metroid.png',
+            'https://img.icons8.com/color/144/sonic-the-hedgehog.png'
+        ];
+        let selectedRom = null;
+        let selectedIcon = null;
 
-        const emulators = ["RetroArch", "Dolphin", "PCSX2", "FCEUX", "mGBA", "DuckStation", "Xemu"];
+        function triggerFilePicker() { document.getElementById('fileInput').click(); }
+        function triggerIconFolderPicker() { document.getElementById('iconFolderInput').click(); }
 
-        // Folder Operations
-        function triggerFolderPicker(type) {
-            document.getElementById(type === 'rom' ? 'fileInput' : 'iconFolderInput').click();
-        }
-
-        function handleFolderSelection(event, type) {
-            const files = Array.from(event.target.files);
+        function handleFileSelection(event) {
+            const files = event.target.files;
             if (!files.length) return;
-
-            if (type === 'rom') {
-                const exts = ['.nes', '.sfc', '.gba', '.iso', '.bin', '.n64', '.nsp'];
-                currentScan.roms = files
-                    .filter(f => exts.some(e => f.name.toLowerCase().endsWith(e)))
-                    .map(f => f.name);
-                document.getElementById('romPathText').innerText = `MAPPED: ${files[0].webkitRelativePath.split('/')[0]}`;
-                showToast(`Scanned ${currentScan.roms.length} ROM files`);
-            } else {
-                currentScan.icons = files
-                    .filter(f => f.type.startsWith('image/'))
-                    .map(f => URL.createObjectURL(f));
-                document.getElementById('iconPathText').innerText = `MAPPED: ${files[0].webkitRelativePath.split('/')[0]}`;
-                showToast(`Found ${currentScan.icons.length} artwork assets`);
-            }
-            renderImportUI();
+            const extensions = ['.iso', '.rom', '.nsp', '.sfc', '.gba', '.nes', '.bin'];
+            scannedFiles = Array.from(files)
+                .filter(f => extensions.some(ext => f.name.toLowerCase().endsWith(ext)))
+                .map(f => f.name);
+            
+            document.getElementById('romPathLabel').innerText = `Mapped: ${files[0].webkitRelativePath.split('/')[0]}`;
+            renderImportOptions();
+            showToast(`Found ${scannedFiles.length} ROMs`);
         }
 
-        // Import UI logic
-        function renderImportUI() {
-            const romList = document.getElementById('importRomList');
-            const iconGrid = document.getElementById('importIconGrid');
+        function handleIconFolderSelection(event) {
+            const files = event.target.files;
+            if (!files.length) return;
+            // In a real app we'd convert these to ObjectURLs, here we simulate finding icon files
+            showToast(`Scanned ${files.length} artwork files`);
+            document.getElementById('iconPathLabel').innerText = `Mapped: ${files[0].webkitRelativePath.split('/')[0]}`;
+        }
 
-            if (currentScan.roms.length > 0) {
-                romList.innerHTML = currentScan.roms.map(r => `
-                    <button onclick="stageRom('${r}')" class="w-full text-left p-4 text-[10px] font-black tracking-widest border border-white/5 ${staging.rom === r ? 'bg-red-600 text-white' : 'bg-white/5 text-zinc-400'} transition-all truncate">
-                        ${r}
+        function toggleImport(show) {
+            document.getElementById('importModal').classList.toggle('hidden', !show);
+            if(show) renderImportOptions();
+        }
+
+        function toggleSettings(show) {
+            document.getElementById('settingsModal').classList.toggle('hidden', !show);
+        }
+
+        function renderImportOptions() {
+            const romList = document.getElementById('romList');
+            const iconList = document.getElementById('iconList');
+            
+            if (scannedFiles.length > 0) {
+                romList.innerHTML = scannedFiles.map(rom => `
+                    <button onclick="selectRom('${rom}')" class="p-4 bg-white/5 border ${selectedRom === rom ? 'border-red-500 bg-red-500/10' : 'border-white/5'} rounded-xl text-left text-xs font-bold truncate btn-active">
+                        ${rom}
                     </button>
                 `).join('');
             }
 
-            if (currentScan.icons.length > 0) {
-                iconGrid.innerHTML = currentScan.icons.map(img => `
-                    <button onclick="stageIcon('${img}')" class="aspect-square border-2 ${staging.icon === img ? 'border-red-600' : 'border-transparent'} bg-white/5 p-1 relative group overflow-hidden">
-                        <img src="${img}" class="w-full h-full object-cover grayscale group-hover:grayscale-0">
-                    </button>
-                `).join('');
-            } else {
-                // Fallback icons
-                const defaults = [
-                    'https://img.icons8.com/color/144/super-mario.png',
-                    'https://img.icons8.com/color/144/legend-of-zelda.png',
-                    'https://img.icons8.com/color/144/metroid.png'
-                ];
-                iconGrid.innerHTML = defaults.map(img => `
-                    <button onclick="stageIcon('${img}')" class="aspect-square border-2 ${staging.icon === img ? 'border-red-600' : 'border-transparent'} bg-white/5 p-3">
-                        <img src="${img}" class="w-full h-full object-contain">
-                    </button>
-                `).join('');
-            }
-        }
-
-        function stageRom(r) { 
-            staging.rom = r; 
-            document.getElementById('importName').value = r.split('.')[0].toUpperCase().replace(/[_-]/g, ' ');
-            renderImportUI(); 
-        }
-        function stageIcon(i) { staging.icon = i; renderImportUI(); }
-
-        function finalizeImport() {
-            if (!staging.rom) {
-                showToast("Select a ROM file first");
-                return;
-            }
-            library.push({
-                id: Date.now(),
-                name: document.getElementById('importName').value || staging.rom,
-                rom: staging.rom,
-                icon: staging.icon || 'https://img.icons8.com/color/144/super-mario.png',
-                app: 'UNASSIGNED'
-            });
-            localStorage.setItem('rv-vault', JSON.stringify(library));
-            toggleImport(false);
-            renderLibrary();
-            showToast("Committed to archive");
-        }
-
-        // Launcher Workflow
-        function openAppSelector(id) {
-            activeLaunchId = id;
-            const container = document.getElementById('appOptions');
-            container.innerHTML = emulators.map(app => `
-                <button onclick="setAppAndLaunch('${app}')" class="w-full p-5 bg-white/5 hover:bg-red-600 text-white text-[10px] font-black tracking-[0.3em] text-left transition-all border border-white/5">
-                    ${app.toUpperCase()}
+            iconList.innerHTML = scannedIcons.map(url => `
+                <button onclick="selectIcon('${url}')" class="flex flex-col items-center gap-2 group">
+                    <div class="cartridge w-full ${selectedIcon === url ? 'ring-4 ring-red-500' : ''}">
+                        <div class="cartridge-label">
+                            <img src="${url}" class="w-full h-full object-cover">
+                        </div>
+                    </div>
                 </button>
             `).join('');
-            document.getElementById('appSelectorModal').classList.remove('hidden');
         }
 
-        function setAppAndLaunch(app) {
-            const game = library.find(g => g.id === activeLaunchId);
-            game.app = app;
-            localStorage.setItem('rv-vault', JSON.stringify(library));
-            closeAppSelector();
+        function selectRom(rom) {
+            selectedRom = rom;
+            document.getElementById('gameName').value = rom.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
+            renderImportOptions();
+        }
+
+        function selectIcon(url) {
+            selectedIcon = url;
+            renderImportOptions();
+        }
+
+        function saveGame() {
+            if(!selectedRom) return;
+            library.push({
+                id: Date.now(),
+                name: document.getElementById('gameName').value || selectedRom,
+                romFile: selectedRom,
+                image: selectedIcon || scannedIcons[0],
+                app: document.getElementById('targetApp').value
+            });
+            localStorage.setItem('rv-library', JSON.stringify(library));
+            toggleImport(false);
             renderLibrary();
-            showToast(`Booting: ${game.name}`);
-            setTimeout(() => {
-                console.log(`Command Executed: ${app} --load-rom "${game.rom}"`);
-            }, 1000);
         }
 
-        function closeAppSelector() {
-            document.getElementById('appSelectorModal').classList.add('hidden');
+        function deleteGame(id) {
+            library = library.filter(g => g.id !== id);
+            localStorage.setItem('rv-library', JSON.stringify(library));
+            renderLibrary();
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 3000);
         }
 
         function renderLibrary() {
@@ -373,9 +375,9 @@
             const empty = document.getElementById('emptyState');
             const counter = document.getElementById('gameCounter');
             
-            counter.innerText = `${library.length} MEDIA LOGS REGISTERED`;
+            counter.innerText = `${library.length} titles active`;
 
-            if (library.length === 0) {
+            if(library.length === 0) {
                 grid.innerHTML = '';
                 empty.classList.remove('hidden');
                 return;
@@ -383,45 +385,31 @@
 
             empty.classList.add('hidden');
             grid.innerHTML = library.map(game => `
-                <div class="game-card group cursor-pointer" onclick="openAppSelector(${game.id})">
-                    <div class="cartridge">
+                <div class="game-card flex flex-col gap-4 group">
+                    <div class="cartridge w-full">
                         <div class="cartridge-label">
-                            <img src="${game.icon}" class="w-full h-full object-contain p-4 grayscale group-hover:grayscale-0 transition-all duration-300">
-                            <div class="scan-line hidden group-hover:block"></div>
+                            <img src="${game.image}" class="w-full h-full object-cover">
+                            <div class="scanline"></div>
+                            <!-- Hover Overlay -->
+                            <div class="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-4 gap-2">
+                                <button onclick="showToast('Loading ${game.name}...')" class="w-full py-2 bg-white text-black font-black rounded-lg text-[10px] btn-active">START</button>
+                                <button onclick="deleteGame(${game.id})" class="w-full py-2 bg-red-600 text-white font-black rounded-lg text-[10px] btn-active">EJECT</button>
+                            </div>
                         </div>
-                        <div class="cartridge-ridges"></div>
                     </div>
-                    <div class="mt-5">
-                        <p class="text-[10px] font-black tracking-widest truncate uppercase text-zinc-300">${game.name}</p>
-                        <div class="flex items-center justify-between mt-1">
-                            <p class="text-[8px] text-zinc-600 font-bold tracking-widest">${game.app}</p>
-                            <button onclick="event.stopPropagation(); deleteGame(${game.id})" class="text-[8px] text-zinc-800 hover:text-red-500 transition-colors uppercase font-black">Eject</button>
-                        </div>
+                    <div class="px-1">
+                        <h3 class="font-bold text-xs truncate text-white uppercase tracking-wider">${game.name}</h3>
+                        <p class="text-[8px] font-black text-zinc-500 uppercase mt-1 tracking-widest">${game.app}</p>
                     </div>
                 </div>
             `).join('');
         }
 
-        function deleteGame(id) {
-            library = library.filter(g => g.id !== id);
-            localStorage.setItem('rv-vault', JSON.stringify(library));
-            renderLibrary();
-        }
-
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            document.getElementById('toastMsg').innerText = msg;
-            t.classList.remove('hidden');
-            setTimeout(() => t.classList.add('hidden'), 3000);
-        }
-
-        function toggleImport(s) { document.getElementById('importModal').classList.toggle('hidden', !s); }
-        function toggleSettings(s) { document.getElementById('settingsModal').classList.toggle('hidden', !s); }
-        
         function filterGames() {
-            const q = document.getElementById('searchInput').value.toLowerCase();
-            document.querySelectorAll('.game-card').forEach(c => {
-                c.style.display = c.innerText.toLowerCase().includes(q) ? 'block' : 'none';
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            document.querySelectorAll('.game-card').forEach(card => {
+                const name = card.querySelector('h3').innerText.toLowerCase();
+                card.style.display = name.includes(query) ? 'flex' : 'none';
             });
         }
 
